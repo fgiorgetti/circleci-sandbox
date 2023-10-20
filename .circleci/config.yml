@@ -1,0 +1,117 @@
+version: 2.1
+commands:
+  podman-latest:
+    description: "Install latest podman v4 or higher"
+    steps:
+      - run:
+          name: install podman
+          command: |
+            sudo mkdir -p /etc/apt/keyrings
+            curl -fsSL https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_$(lsb_release -rs)/Release.key \
+              | gpg --dearmor \
+              | sudo tee /etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg > /dev/null
+            echo \
+              "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg]\
+                https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_$(lsb_release -rs)/ /" \
+              | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list > /dev/null
+            sudo apt-get update -qq
+            sudo apt-get -qq -y install podman
+            podman version
+
+            systemctl --user enable --now podman.socket
+  session-info:
+    description: Session info
+    steps:
+      - run:
+          name: User ID info
+          command: id
+      - run:
+          name: Current cgroup
+          command: cat /proc/self/cgroup
+  nginx:
+    description: installing nginx
+    steps:
+    - run:
+        command: sudo apt -y install nginx
+  system-monitor:
+    description: monitors system state
+    steps:
+    - run:
+        command: journalctl -p 7 -xb -f
+        background: true
+  reproducer:
+    steps:
+      - run:
+          name: "reproduce network issue"
+          command: |
+            export PODMAN="podman --url unix:///run/user/$(id -u)/podman/podman.sock"
+
+            echo "Creating network net1"
+            $PODMAN network create net1
+            echo
+
+            echo "Running container named curl1 connected to net1"
+            $PODMAN run --network net1 --name curl1 -d docker.io/curlimages/curl tail -f /dev/null
+            echo
+
+            echo "Executing curl (from curl1)"
+            $PODMAN exec curl1 curl --max-time 10 host.containers.internal || exit 1
+            echo
+
+            for ((i=0;i<10;i++)); do
+            	date
+            	echo "Executing curl (from curl2) and removing curl2 container"
+            	$PODMAN run --rm --network net1 --name curl2 docker.io/curlimages/curl host.containers.internal || exit 2
+                echo
+
+                echo "Executing curl again from curl1 container after curl2 is gone"
+                $PODMAN exec curl1 curl --max-time 10 host.containers.internal || exit 3
+                echo
+            done
+      - run:
+          name: Podman network interface port states
+          when: always
+          command: journalctl -b | grep $(podman network inspect net1 -f '{{.NetworkInterface}}')
+      - run:
+          name: Restarting curl1 container restores the state
+          when: always
+          command: podman restart curl1
+      - run:
+          name: Executing curl from curl1 after restart
+          when: always
+          command: |
+            export PODMAN="podman --url unix:///run/user/$(id -u)/podman/podman.sock"
+            $PODMAN restart curl1
+            $PODMAN exec curl1 curl --max-time 10 host.containers.internal || exit 1
+      - run:
+          name: Podman network interface port states after curl1 restart
+          when: always
+          command:
+            journalctl -b | grep $(podman network inspect net1 -f '{{.NetworkInterface}}')
+      - run:
+          name: dmesg
+          when: always
+          command:
+            sudo dmesg
+jobs:
+  reproducer:
+    description: "Reproduces podman network issue on CircleCI"
+    executor: my-executor
+    steps:
+      - system-monitor
+      - session-info
+      - podman-latest
+      - nginx
+      - reproducer
+            
+executors:
+  my-executor:
+    machine:
+      image: ubuntu-2204:2022.10.2
+    resource_class: medium
+
+workflows:
+  version: 2.1
+  build-workflow:
+    jobs:
+      - reproducer
