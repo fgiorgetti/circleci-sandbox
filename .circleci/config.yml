@@ -19,6 +19,11 @@ commands:
             podman version
 
             systemctl --user enable --now podman.socket
+  podman-info:
+    description: Podman info
+    steps:
+      - run:
+          command: podman info
   session-info:
     description: Session info
     steps:
@@ -101,6 +106,7 @@ jobs:
       - system-monitor
       - session-info
       - podman-latest
+      - podman-info
       - nginx
       - reproducer
             
