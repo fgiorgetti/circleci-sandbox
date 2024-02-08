@@ -3,10 +3,11 @@ commands:
   podman-latest:
     description: "Install latest podman v4 or higher"
     steps:
-      - name: Install brew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo "PATH=/home/linuxbrew/.linuxbrew/bin:${PATH}" >> "${GITHUB_ENV}"
+      - run:
+          name: Install brew
+          command: |
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            echo "PATH=/home/linuxbrew/.linuxbrew/bin:${PATH}" >> "${GITHUB_ENV}"
       - run:
           name: install podman
           command: |
