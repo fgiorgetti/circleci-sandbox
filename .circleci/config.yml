@@ -14,7 +14,7 @@ commands:
           command: |
             brew install podman
             podman version
-            systemctl --user enable --now podman.socket
+            brew services start podman
   podman-info:
     description: Podman info
     steps:
