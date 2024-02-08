@@ -7,14 +7,14 @@ commands:
           name: Install brew
           command: |
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            echo "PATH=/home/linuxbrew/.linuxbrew/bin:${PATH}" >> "${BASH_ENV}"
+            echo "PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/opt/podman/bin:${PATH}" >> "${BASH_ENV}"
             source "${BASH_ENV}"
       - run:
           name: install podman
           command: |
             brew install podman
-            podman version
             brew services start podman
+            podman version
   podman-info:
     description: Podman info
     steps:
