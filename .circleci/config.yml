@@ -104,6 +104,11 @@ commands:
           command:
             sudo dmesg
 jobs:
+  go-version:
+    description: "Installs go and show version"
+    executor: my-executor
+    steps:
+      - go-version
   reproducer:
     description: "Reproduces podman network issue on CircleCI"
     executor: my-executor
