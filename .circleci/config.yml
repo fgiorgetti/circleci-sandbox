@@ -21,7 +21,7 @@ commands:
     description: Go version
     steps:
       - go/install:
-          version: "1.21"
+          version: "1.21.9"
       - run:
           command: go-version
   podman-info:
