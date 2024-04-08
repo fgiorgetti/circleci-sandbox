@@ -1,4 +1,6 @@
 version: 2.1
+orbs:
+  go: circleci/go@1.11.0
 commands:
   podman-latest:
     description: "Install latest podman v4 or higher"
@@ -15,6 +17,13 @@ commands:
             brew install podman
             brew services start podman
             podman version
+  go-version:
+    description: Go version
+    steps:
+      - go/install:
+          version: "1.21"
+      - run:
+          command: go-version
   podman-info:
     description: Podman info
     steps:
@@ -114,4 +123,4 @@ workflows:
   version: 2.1
   build-workflow:
     jobs:
-      - reproducer
+      - go-version
