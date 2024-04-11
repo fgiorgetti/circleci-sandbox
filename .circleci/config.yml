@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  docker: circleci/docker@1.0.1
+  docker: circleci/docker@2.6.0
   go: circleci/go@1.11.0
 commands:
   podman-latest:
@@ -21,6 +21,8 @@ commands:
   docker-version:
     description: docker version
     steps:
+      - docker/install:
+          version: "v26.0.1"
       - run:
           command: docker version
   go-version:
