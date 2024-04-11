@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  docker: circleci/docker@2.6.0
+  docker: circleci/docker@1.0.1
   go: circleci/go@1.11.0
 commands:
   podman-latest:
