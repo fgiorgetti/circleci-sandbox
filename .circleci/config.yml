@@ -21,7 +21,7 @@ commands:
   docker-version:
     description: docker version
     steps:
-      - docker/install:
+      - docker/install-docker:
           version: "v26.0.1"
       - run:
           command: docker version
