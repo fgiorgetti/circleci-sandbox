@@ -1,5 +1,6 @@
 version: 2.1
 orbs:
+  docker: circleci/docker@2.6.0
   go: circleci/go@1.11.0
 commands:
   podman-latest:
@@ -17,6 +18,11 @@ commands:
             brew install podman
             brew services start podman
             podman version
+  docker-version:
+    description: docker version
+    steps:
+      - run:
+          command: docker version
   go-version:
     description: Go version
     steps:
@@ -104,11 +110,11 @@ commands:
           command:
             sudo dmesg
 jobs:
-  go-version:
-    description: "Installs go and show version"
+  docker-version:
+    description: "Shows docker version and waits manual inspection"
     executor: my-executor
     steps:
-      - go-version
+      - docker-version
   reproducer:
     description: "Reproduces podman network issue on CircleCI"
     executor: my-executor
@@ -128,4 +134,4 @@ workflows:
   version: 2.1
   build-workflow:
     jobs:
-      - go-version
+      - docker-version
