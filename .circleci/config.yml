@@ -18,7 +18,7 @@ commands:
             brew install podman
             brew services start podman
             podman version
-  docker-version:
+  docker-install:
     description: docker version
     steps:
       - docker/install-docker:
@@ -112,7 +112,7 @@ commands:
           command:
             sudo dmesg
 jobs:
-  docker-version:
+  docker-buildx:
     description: "Shows docker version and waits manual inspection"
     executor: my-executor
     steps:
@@ -121,7 +121,7 @@ jobs:
           name: login
           command: |
             docker login quay.io -u ${QUAY_LOGIN} -p ${QUAY_PASSWORD}
-      - docker-version
+      - docker-install
       - run:
           command: |
             make
@@ -144,4 +144,4 @@ workflows:
   version: 2.1
   build-workflow:
     jobs:
-      - docker-version
+      - docker-buildx
