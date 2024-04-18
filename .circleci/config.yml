@@ -122,7 +122,7 @@ jobs:
           command: |
             docker login quay.io -u ${QUAY_LOGIN} -p ${QUAY_PASSWORD}
       - setup_remote_docker:
-          version: docker26
+          version: docker25
       - docker-install
       - run:
           command: |
