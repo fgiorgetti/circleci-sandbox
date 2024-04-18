@@ -5,6 +5,7 @@ DOCKER := docker
 IMAGE := quay.io/fgiorgetti/skupper-redirect
 
 all:
+	${DOCKER} buildx create --name skupper --use --bootstrap
 	${DOCKER} buildx prune -af
 	${DOCKER} buildx build --platform ${PLATFORMS} -t ${IMAGE} .
 	${DOCKER} buildx build --load  -t ${IMAGE} .
