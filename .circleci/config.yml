@@ -121,9 +121,9 @@ jobs:
           name: login
           command: |
             docker login quay.io -u ${QUAY_LOGIN} -p ${QUAY_PASSWORD}
-      - setup_remote_docker:
-          version: docker25
-#      - docker-install
+#      - setup_remote_docker:
+#          version: docker25
+      - docker-install
       - run:
           command: |
             make
