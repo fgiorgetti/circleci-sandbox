@@ -138,14 +138,13 @@ jobs:
             
 executors:
   my-executor:
-    docker:
-      - image: cimg/go:1.21
+#    docker:
+#      - image: cimg/go:1.21
+    machine:
+      image: ubuntu-2204:2022.10.2
+    resource_class: medium
     environment:
       CGO_ENABLED: 0
-
-#    machine:
-#      image: ubuntu-2204:2022.10.2
-#    resource_class: medium
 
 workflows:
   version: 2.1
