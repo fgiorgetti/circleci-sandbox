@@ -116,7 +116,15 @@ jobs:
     description: "Shows docker version and waits manual inspection"
     executor: my-executor
     steps:
+      - checkout
+      - run:
+          name: login
+          command: |
+            docker login quay.io -u ${QUAY_LOGIN} -p ${QUAY_PASSWORD}
       - docker-version
+      - run:
+          command: |
+            make
   reproducer:
     description: "Reproduces podman network issue on CircleCI"
     executor: my-executor
