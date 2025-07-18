@@ -1,153 +1,134 @@
 version: 2.1
 orbs:
-  docker: circleci/docker@2.6.0
-  go: circleci/go@1.11.0
-commands:
-  podman-latest:
-    description: "Install latest podman v4 or higher"
-    steps:
-      - run:
-          name: Install brew
-          command: |
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            echo "PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/opt/podman/bin:${PATH}" >> "${BASH_ENV}"
-            source "${BASH_ENV}"
-      - run:
-          name: install podman
-          command: |
-            brew install podman
-            brew services start podman
-            podman version
-  docker-install:
-    description: docker version
-    steps:
-      - docker/install-docker:
-          version: "v26.0.1"
-      - run:
-          command: docker version
-  go-version:
-    description: Go version
-    steps:
-      - go/install:
-          version: "1.21.9"
-      - run:
-          command: go-version
-  podman-info:
-    description: Podman info
-    steps:
-      - run:
-          command: podman info
-  session-info:
-    description: Session info
-    steps:
-      - run:
-          name: User ID info
-          command: id
-      - run:
-          name: Current cgroup
-          command: cat /proc/self/cgroup
-  nginx:
-    description: installing nginx
-    steps:
-    - run:
-        command: sudo apt -y install nginx
-  system-monitor:
-    description: monitors system state
-    steps:
-    - run:
-        command: journalctl -p 7 -xb -f
-        background: true
-  reproducer:
-    steps:
-      - run:
-          name: "reproduce network issue"
-          command: |
-            export PODMAN="podman --url unix:///run/user/$(id -u)/podman/podman.sock"
+    docker: circleci/docker@1.0.1
+    kube-orb: circleci/kubernetes@0.11.0
+    go: circleci/go@1.7.1
+    helm: circleci/helm@3.1.0
 
-            echo "Creating network net1"
-            $PODMAN network create net1
-            echo
-
-            echo "Running container named curl1 connected to net1"
-            $PODMAN run --network net1 --name curl1 -d docker.io/curlimages/curl tail -f /dev/null
-            echo
-
-            echo "Executing curl (from curl1)"
-            $PODMAN exec curl1 curl --max-time 10 host.containers.internal || exit 1
-            echo
-
-            for ((i=0;i<10;i++)); do
-            	date
-            	echo "Executing curl (from curl2) and removing curl2 container"
-            	$PODMAN run --rm --network net1 --name curl2 docker.io/curlimages/curl host.containers.internal || exit 2
-                echo
-
-                echo "Executing curl again from curl1 container after curl2 is gone"
-                $PODMAN exec curl1 curl --max-time 10 host.containers.internal || exit 3
-                echo
-            done
-      - run:
-          name: Podman network interface port states
-          when: always
-          command: journalctl -b | grep $(podman network inspect net1 -f '{{.NetworkInterface}}')
-      - run:
-          name: Restarting curl1 container restores the state
-          when: always
-          command: podman restart curl1
-      - run:
-          name: Executing curl from curl1 after restart
-          when: always
-          command: |
-            export PODMAN="podman --url unix:///run/user/$(id -u)/podman/podman.sock"
-            $PODMAN restart curl1
-            $PODMAN exec curl1 curl --max-time 10 host.containers.internal || exit 1
-      - run:
-          name: Podman network interface port states after curl1 restart
-          when: always
-          command:
-            journalctl -b | grep $(podman network inspect net1 -f '{{.NetworkInterface}}')
-      - run:
-          name: dmesg
-          when: always
-          command:
-            sudo dmesg
-jobs:
-  docker-buildx:
-    description: "Shows docker version and waits manual inspection"
-    executor: my-executor
-    steps:
-      - checkout
-      - run:
-          name: login
-          command: |
-            docker login quay.io -u ${QUAY_LOGIN} -p ${QUAY_PASSWORD}
-#      - setup_remote_docker:
-#          version: docker25
-      - docker-install
-      - run:
-          command: |
-            make
-  reproducer:
-    description: "Reproduces podman network issue on CircleCI"
-    executor: my-executor
-    steps:
-      - system-monitor
-      - session-info
-      - podman-latest
-      - podman-info
-            
 executors:
-  my-executor:
-#    docker:
-#      - image: cimg/go:1.21
+  go_cimg:
+    docker:
+      - image: cimg/go:1.24
+    resource_class: large
+
+  local_cluster_test_executor:
     machine:
       image: ubuntu-2204:2022.10.2
-    resource_class: medium
-    environment:
-      CGO_ENABLED: 0
+    resource_class: large
+
+commands:
+  skopeo-install:
+    description: Install Skopeo
+    steps:
+      - run:
+          name: Apt Install Skopeo
+          command: sudo apt-get update -y && sudo apt-get install -y skopeo
+  kubectl-install:
+    description: Install kubectl
+    steps:
+      - run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - run: sudo chmod +x kubectl
+      - run: sudo mv kubectl /usr/local/bin
+  kind-install:
+    description: Install kind
+    steps:
+      - run: curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-linux-amd64
+      - run: chmod +x kind
+      - run: sudo mv kind /usr/local/bin
+      - run: curl -Lo cloudprovider.tgz https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_linux_amd64.tar.gz
+      - run: tar xzf cloudprovider.tgz
+      - run: sudo mv cloud-provider-kind /usr/local/bin
+  operator-sdk-install:
+    description: Install operator-sdk
+    steps:
+      - run: curl -LO https://github.com/operator-framework/operator-sdk/releases/latest/download/operator-sdk_linux_amd64
+      - run: sudo chmod +x operator-sdk_linux_amd64
+      - run: sudo mv operator-sdk_linux_amd64 /usr/local/bin/operator-sdk
+  helm-install:
+    description: Install Helm CLI
+    steps:
+      - run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  compile_go_program:
+    description: Compile specified platform.
+    parameters:
+      platform:
+        type: string
+      goos:
+        type: string
+      goarch:
+        type: string
+      exesuffix:
+        default: ""
+        type: string
+    steps:
+      - run:
+          name: Building << parameters.platform >>
+          command: >-
+            VERSION="${CIRCLE_TAG:-ci-${CIRCLE_BUILD_NUM}}";
+            GOOS=<< parameters.goos >>
+            GOARCH=<< parameters.goarch >>
+            go build -ldflags "-X github.com/skupperproject/skupper/internal/version.Version=${VERSION}"
+            -o dist/<< parameters.platform >>/skupper<< parameters.exesuffix >>
+            ./cmd/skupper
+      - run:
+          name: Audit << parameters.platform >>
+          command: >-
+            sha512sum dist/<< parameters.platform >>/skupper<< parameters.exesuffix >>;
+            file dist/<< parameters.platform >>/skupper<< parameters.exesuffix >>;
+            go version -m dist/<< parameters.platform >>/skupper<< parameters.exesuffix >>;
+
+yaml-templates:
+  branch_filters: &run_for_all_branches
+    filters:
+      tags:
+        ignore: /.*/
+
+  v2_branch_filters: &run_for_v2_branch
+    filters:
+      branches:
+        ignore: /.*/
+        only: /main/
+
+  release_filters: &run_for_numeric_tags
+    filters:
+      branches:
+        ignore: /.*/
+      tags:
+        only: /[0-9].*/
+
+  v2_release_requires: &v2_release_requires
+    requires:
+      - build-all
+      - test-skupper-binary
+      - test
+      - build-oci-images
 
 workflows:
   version: 2.1
-  build-workflow:
+  build:
     jobs:
-      - docker-buildx
+      - generate-network-observer-operator-bundle:
+          <<: *run_for_all_branches
+
+jobs:
+  generate-network-observer-operator-bundle:
+    executor:
+      name: local_cluster_test_executor
+    steps:
+      - docker/install-docker
+      - skopeo-install
+      - checkout
+      - go/mod-download-cached
+      - kubectl-install
+      - operator-sdk-install
+      - run:
+          name: Clone the skupper report
+          command: |
+            git clone https://github.com/skupperproject/skupper.git ~/skupper
+      - run: |
+          cd ~/skupper
+          make generate-network-observer-operator-bundle
+      - persist_to_workspace:
+          root: .
+          paths:
+            - network-observer-operator
