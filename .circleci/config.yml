@@ -119,13 +119,16 @@ jobs:
       - skopeo-install
       - go/install:
           version: "1.24.4"
-      - go/mod-download-cached
       - kubectl-install
       - operator-sdk-install
       - run:
           name: Clone the skupper report
           command: |
             git clone https://github.com/skupperproject/skupper.git ~/skupper
+      - run:
+          name: Download go modules
+          command: |
+            cd skupper; go mod download
       - run: |
           cd ~/skupper
           make generate-network-observer-operator-bundle
