@@ -113,16 +113,25 @@ workflows:
 jobs:
   generate-network-observer-operator-bundle:
     executor:
-      name: go_cimg
+      name: local_cluster_test_executor
     steps:
       - docker/install-docker
-      - setup_remote_docker
       - skopeo-install
-      - checkout
-      - go/mod-download-cached
+      - go/install:
+          version: "1.24.4"
       - kubectl-install
       - operator-sdk-install
-      - run: make generate-network-observer-operator-bundle
+      - run:
+          name: Clone the skupper report
+          command: |
+            git clone https://github.com/skupperproject/skupper.git ~/skupper
+      - run:
+          name: Download go modules
+          command: |
+            cd ~/skupper; go mod download
+      - run: |
+          cd ~/skupper
+          make generate-network-observer-operator-bundle
       - persist_to_workspace:
           root: .
           paths:
