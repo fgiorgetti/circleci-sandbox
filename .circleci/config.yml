@@ -118,11 +118,19 @@ jobs:
       - docker/install-docker
       - setup_remote_docker
       - skopeo-install
-      - checkout
-      - go/mod-download-cached
       - kubectl-install
       - operator-sdk-install
-      - run: make generate-network-observer-operator-bundle
+      - run:
+          name: Clone the skupper report
+          command: |
+            git clone https://github.com/skupperproject/skupper.git ~/skupper
+      - run:
+          name: Download go modules
+          command: |
+            cd ~/skupper; go mod download
+      - run: |
+          cd ~/skupper
+          make generate-network-observer-operator-bundle
       - persist_to_workspace:
           root: .
           paths:
