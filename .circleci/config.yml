@@ -128,7 +128,7 @@ jobs:
       - run:
           name: Download go modules
           command: |
-            cd skupper; go mod download
+            cd ~/skupper; go mod download
       - run: |
           cd ~/skupper
           make generate-network-observer-operator-bundle
